@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SorteaPlay 🎲</title>
+<style>
+  /* ── Variables y reset ─────────────────────────────── */
+  :root {
+    --cream:  #FDFCF8;
+    --blue:   #4361EE;
+    --blue2:  #3451d1;
+    --coral:  #FF4D6D;
+    --coral2: #e63055;
+    --gray:   #6b7280;
+    --card:   #ffffff;
+    --shadow: 0 4px 20px rgba(67,97,238,.12);
+    --radius: 18px;
+    --font:   'Segoe UI', system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--cream);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 16px 48px;
+  }
+
+  /* ── Contenedor principal ──────────────────────────── */
+  .app { width: 100%; max-width: 480px; }
+
+  /* ── Pantallas ─────────────────────────────────────── */
+  .screen { display: none; animation: fadeIn .35s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+
+  /* ── Botones ───────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px 28px; border: none; border-radius: 50px; cursor: pointer;
+    font-size: 1rem; font-weight: 700; letter-spacing: .02em; transition: all .2s;
+  }
+  .btn-primary { background: var(--blue); color: #fff; box-shadow: 0 4px 14px rgba(67,97,238,.35); }
+  .btn-primary:hover { background: var(--blue2); transform: translateY(-2px); }
+  .btn-coral   { background: var(--coral); color: #fff; box-shadow: 0 4px 14px rgba(255,77,109,.35); }
+  .btn-coral:hover { background: var(--coral2); transform: translateY(-2px); }
+  .btn-ghost   { background: transparent; color: var(--gray); border: 2px solid #e5e7eb; }
+  .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+  .btn-full { width: 100%; }
+
+  /* ── Header compartido ─────────────────────────────── */
+  .header { text-align: center; margin-bottom: 32px; }
+  .header .emoji { font-size: 3.2rem; display: block; margin-bottom: 8px; }
+  .header h1 { font-size: 2rem; color: var(--blue); font-weight: 900; }
+  .header p  { color: var(--gray); margin-top: 6px; font-size: .95rem; }
+
+  /* ── Pasos (breadcrumb) ────────────────────────────── */
+  .steps { display: flex; justify-content: center; gap: 6px; margin-bottom: 28px; }
+  .step {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #e5e7eb; transition: background .3s, transform .3s;
+  }
+  .step.done  { background: var(--blue); }
+  .step.coral { background: var(--coral); transform: scale(1.3); }
+
+  /* ── ── PANTALLA 1: INICIO ─────────────────────────── */
+  #s-inicio { text-align: center; padding-top: 40px; }
+  #s-inicio .logo { font-size: 5rem; margin-bottom: 16px; display: block; }
+  #s-inicio h1 { font-size: 2.8rem; font-weight: 900; color: var(--blue); line-height: 1.1; }
+  #s-inicio .sub {
+    font-size: 1.1rem; color: var(--gray); margin: 14px auto 40px;
+    max-width: 320px; line-height: 1.5;
+  }
+  .badges { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 36px; }
+  .badge {
+    background: #fff; border: 2px solid #e5e7eb; border-radius: 50px;
+    padding: 6px 14px; font-size: .82rem; color: var(--gray); font-weight: 600;
+  }
+
+  /* ── ── PANTALLA 2: JUGADORES ──────────────────────── */
+  .input-row { display: flex; gap: 10px; margin-bottom: 20px; }
+  .input-row input {
+    flex: 1; padding: 13px 16px; border: 2px solid #e5e7eb; border-radius: 50px;
+    font-size: 1rem; outline: none; background: #fff; transition: border .2s;
+  }
+  .input-row input:focus { border-color: var(--blue); }
+  .player-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; min-height: 60px; }
+  .player-item {
+    display: flex; align-items: center; gap: 14px;
+    background: #fff; border-radius: var(--radius); padding: 12px 16px;
+    box-shadow: var(--shadow); animation: slideIn .25s ease;
+  }
+  @keyframes slideIn { from { opacity:0; transform:translateX(-16px); } to { opacity:1; transform:none; } }
+  .player-avatar { font-size: 1.8rem; line-height: 1; }
+  .player-name   { flex: 1; font-weight: 700; color: #1f2937; }
+  .btn-remove {
+    background: none; border: none; cursor: pointer; font-size: 1.1rem;
+    color: #d1d5db; transition: color .2s;
+  }
+  .btn-remove:hover { color: var(--coral); }
+  .msg-min { text-align: center; color: var(--gray); font-size: .88rem; margin-bottom: 16px; }
+
+  /* ── ── PANTALLA 3: JUEGOS ─────────────────────────── */
+  .games-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+  .game-card {
+    display: flex; align-items: center; gap: 16px;
+    background: #fff; border-radius: var(--radius); padding: 16px 18px;
+    box-shadow: var(--shadow); cursor: pointer; border: 3px solid transparent;
+    transition: all .22s;
+  }
+  .game-card:hover   { border-color: var(--blue); transform: translateX(4px); }
+  .game-card.selected { border-color: var(--coral); background: #fff7f8; }
+  .game-emoji { font-size: 2.2rem; }
+  .game-info  { flex: 1; }
+  .game-info h3 { font-size: 1rem; font-weight: 800; color: #1f2937; }
+  .game-info p  { font-size: .8rem; color: var(--gray); margin-top: 2px; }
+  .game-tag {
+    padding: 4px 10px; border-radius: 50px; font-size: .72rem; font-weight: 700;
+    background: #e0e7ff; color: var(--blue);
+  }
+  .game-tag.team { background: #ffe4e8; color: var(--coral); }
+
+  /* ── ── PANTALLA 4: SORTEO ─────────────────────────── */
+  #s-sorteo { text-align: center; padding: 24px 0; }
+  .spin-container {
+    width: 160px; height: 160px; margin: 32px auto;
+    border-radius: 50%; background: linear-gradient(135deg,var(--blue),var(--coral));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 4rem; box-shadow: 0 8px 32px rgba(67,97,238,.3);
+    animation: spin 1.8s cubic-bezier(.6,.05,.4,.95) infinite;
+  }
+  @keyframes spin { 0%{transform:rotate(0deg) scale(1)} 50%{transform:rotate(180deg) scale(1.08)} 100%{transform:rotate(360deg) scale(1)} }
+  #spin-names {
+    font-size: 1.4rem; font-weight: 800; color: var(--blue);
+    min-height: 40px; margin-bottom: 8px;
+    animation: flicker .15s linear infinite;
+  }
+  @keyframes flicker { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+  /* ── ── PANTALLA 5: RESULTADO ──────────────────────── */
+  #s-resultado { text-align: center; }
+  .result-banner {
+    background: linear-gradient(135deg,var(--blue),#7b5cf0);
+    border-radius: var(--radius); padding: 28px 24px; color: #fff; margin-bottom: 24px;
+    box-shadow: 0 8px 32px rgba(67,97,238,.3);
+    animation: pop .5s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes pop { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+  .result-banner.team-result { background: linear-gradient(135deg,var(--coral),#ff8c69); }
+  .result-banner .trophy { font-size: 3.5rem; margin-bottom: 8px; }
+  .result-banner h2 { font-size: 1.5rem; font-weight: 900; margin-bottom: 4px; }
+  .result-banner .winner-name { font-size: 2rem; font-weight: 900; letter-spacing: .02em; }
+  .teams-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .team-card {
+    background: #fff; border-radius: var(--radius); padding: 16px;
+    box-shadow: var(--shadow); text-align: center;
+  }
+  .team-card h3 { font-size: .88rem; font-weight: 800; color: var(--gray); margin-bottom: 10px; text-transform: uppercase; letter-spacing: .06em; }
+  .team-card.t1 h3 { color: var(--blue); }
+  .team-card.t2 h3 { color: var(--coral); }
+  .team-members { display: flex; flex-direction: column; gap: 6px; }
+  .team-member { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; }
+  .actions-row { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ── Navegación inferior ───────────────────────────── */
+  .nav-row { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+
+  /* ── Responsive ────────────────────────────────────── */
+  @media(max-width:360px) {
+    #s-inicio h1 { font-size: 2.2rem; }
+    .teams-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ░░░ PANTALLA 1: INICIO ░░░ -->
+  <div id="s-inicio" class="screen active">
+    <span class="logo">🎲</span>
+    <h1>SorteaPlay</h1>
+    <p class="sub">La forma más divertida de sortear jugadores para tus juegos favoritos</p>
+    <div class="badges">
+      <span class="badge">🏃 5 juegos</span>
+      <span class="badge">👥 Equipos</span>
+      <span class="badge">⚡ Rápido</span>
+    </div>
+    <button class="btn btn-primary btn-full" style="font-size:1.1rem;padding:16px" onclick="go('jugadores')">
+      ¡Empezar! 🚀
+    </button>
+  </div>
+
+  <!-- ░░░ PANTALLA 2: JUGADORES ░░░ -->
+  <div id="s-jugadores" class="screen">
+    <div class="steps" id="steps-jugadores"></div>
+    <div class="header">
+      <span class="emoji">👤</span>
+      <h1>Jugadores</h1>
+      <p>Añade al menos 2 jugadores para empezar</p>
+    </div>
+
+    <div class="input-row">
+      <input id="player-input" type="text" placeholder="Nombre del jugador…" maxlength="20"
+             onkeydown="if(event.key==='Enter')addPlayer()">
+      <button class="btn btn-primary" onclick="addPlayer()">➕</button>
+    </div>
+
+    <ul class="player-list" id="player-list"></ul>
+    <p class="msg-min" id="msg-min">Necesitas al menos 2 jugadores</p>
+
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="go('inicio')">← Inicio</button>
+      <button class="btn btn-primary" id="btn-to-juegos" onclick="go('juegos')" disabled>
+        Juegos →
+      </button>
+    </div>
+  </div>
+
+  <!-- ░░░ PANTALLA 3: JUEGOS ░░░ -->
+  <div id="s-juegos" class="screen">
+    <div class="steps" id="steps-juegos"></div>
+    <div class="header">
+      <span class="emoji">🎮</span>
+      <h1>Elige el juego</h1>
+      <p>Selecciona uno para sortear</p>
+    </div>
+
+    <div class="games-grid" id="games-grid"></div>
+
+    <div class="nav-row">
+      <button class="btn btn-ghost" onclick="go('jugadores')">← Jugadores</button>
+      <button class="btn btn-coral" id="btn-to-sorteo" onclick="go('sorteo')" disabled>
+        ¡Sortear! 🎲
+      </button>
+    </div>
+  </div>
+
+  <!-- ░░░ PANTALLA 4: SORTEO ░░░ -->
+  <div id="s-sorteo" class="screen">
+    <div class="header">
+      <h1>Sorteando…</h1>
+      <p>¡Preparad para el juego!</p>
+    </div>
+    <div class="spin-container">🎲</div>
+    <div id="spin-names">…</div>
+  </div>
+
+  <!-- ░░░ PANTALLA 5: RESULTADO ░░░ -->
+  <div id="s-resultado" class="screen">
+    <div class="steps" id="steps-resultado"></div>
+    <div id="result-content"></div>
+    <div class="actions-row">
+      <button class="btn btn-coral btn-full" onclick="go('sorteo')">🔄 Volver a sortear</button>
+      <button class="btn btn-ghost  btn-full" onclick="go('juegos')">← Cambiar juego</button>
+      <button class="btn btn-ghost  btn-full" onclick="go('inicio')">🏠 Inicio</button>
+    </div>
+  </div>
+
+</div><!-- /.app -->
+
+<script>
+/* ══════════════════════════════════════════════════════
+   ESTADO GLOBAL
+══════════════════════════════════════════════════════ */
+const AVATARS = ['🦁','🐯','🦊','🐼','🐸','🦄','🐲','🦅','🐬','🌟','🦋','🐙'];
+const GAMES = [
+  { id:'pilla',    emoji:'🏃', name:'Pilla Pilla',          desc:'Un pillador persigue al resto', type:'one' },
+  { id:'escondite',emoji:'👁️', name:'Escondite',            desc:'Un buscador, todos esconden',   type:'one' },
+  { id:'polis',    emoji:'🚓', name:'Policías y Ladrones',  desc:'Dos equipos: atrapar o huir',   type:'team'},
+  { id:'panuelo',  emoji:'🏳️', name:'El Pañuelo',           desc:'Dos equipos luchan por el pañuelo', type:'team'},
+  { id:'carrera',  emoji:'🏁', name:'Carrera por Equipos',  desc:'Compite en equipo hasta la meta', type:'team'},
+];
+
+let players    = [];   // [{id, name, avatar}]
+let nextId     = 1;
+let selGame    = null; // juego seleccionado
+
+/* ══════════════════════════════════════════════════════
+   NAVEGACIÓN
+══════════════════════════════════════════════════════ */
+function go(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s-' + screen).classList.add('active');
+  window.scrollTo(0, 0);
+
+  if (screen === 'jugadores') renderPlayers();
+  if (screen === 'juegos')    renderGames();
+  if (screen === 'sorteo')    startSorteo();
+}
+
+/* ── Steps indicator ── */
+function renderSteps(containerId, current) {
+  // 0=jugadores, 1=juegos, 2=resultado
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = [0,1,2].map(i =>
+    `<div class="step ${i < current ? 'done' : i === current ? 'coral' : ''}"></div>`
+  ).join('');
+}
+
+/* ══════════════════════════════════════════════════════
+   PANTALLA 2 – JUGADORES
+══════════════════════════════════════════════════════ */
+function addPlayer() {
+  const input = document.getElementById('player-input');
+  const name  = input.value.trim();
+  if (!name) return;
+
+  const avatar = AVATARS[players.length % AVATARS.length];
+  players.push({ id: nextId++, name, avatar });
+  input.value = '';
+  input.focus();
+  renderPlayers();
+}
+
+function removePlayer(id) {
+  players = players.filter(p => p.id !== id);
+  renderPlayers();
+}
+
+function renderPlayers() {
+  renderSteps('steps-jugadores', 0);
+  const list = document.getElementById('player-list');
+  const btn  = document.getElementById('btn-to-juegos');
+  const msg  = document.getElementById('msg-min');
+
+  list.innerHTML = players.map(p => `
+    <li class="player-item">
+      <span class="player-avatar">${p.avatar}</span>
+      <span class="player-name">${escHtml(p.name)}</span>
+      <button class="btn-remove" onclick="removePlayer(${p.id})" title="Eliminar">✕</button>
+    </li>
+  `).join('');
+
+  const ok = players.length >= 2;
+  btn.disabled  = !ok;
+  msg.textContent = ok
+    ? `✅ ${players.length} jugador${players.length>1?'es':''} listos`
+    : 'Necesitas al menos 2 jugadores';
+}
+
+/* ══════════════════════════════════════════════════════
+   PANTALLA 3 – JUEGOS
+══════════════════════════════════════════════════════ */
+function renderGames() {
+  renderSteps('steps-juegos', 1);
+  const grid = document.getElementById('games-grid');
+  grid.innerHTML = GAMES.map(g => `
+    <div class="game-card ${selGame?.id===g.id?'selected':''}" onclick="selectGame('${g.id}')">
+      <span class="game-emoji">${g.emoji}</span>
+      <div class="game-info">
+        <h3>${g.name}</h3>
+        <p>${g.desc}</p>
+      </div>
+      <span class="game-tag ${g.type==='team'?'team':''}">
+        ${g.type==='team'?'Equipos':'1 elegido'}
+      </span>
+    </div>
+  `).join('');
+
+  document.getElementById('btn-to-sorteo').disabled = !selGame;
+}
+
+function selectGame(id) {
+  selGame = GAMES.find(g => g.id === id);
+  renderGames();
+}
+
+/* ══════════════════════════════════════════════════════
+   PANTALLA 4 – SORTEO (animación 2s)
+══════════════════════════════════════════════════════ */
+function startSorteo() {
+  const spinNames = document.getElementById('spin-names');
+  const shuffled  = [...players];
+  let   ticks     = 0;
+
+  // Muestra nombres aleatorios cada 120ms durante ~2s
+  const interval = setInterval(() => {
+    const rnd = shuffled[Math.floor(Math.random() * shuffled.length)];
+    spinNames.textContent = rnd.avatar + ' ' + rnd.name;
+    ticks++;
+  }, 120);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    spinNames.textContent = '🎉';
+    showResult(shuffleFY([...players]));
+    setTimeout(() => go('resultado'), 300);
+  }, 2000);
+}
+
+/* ── Fisher-Yates shuffle ── */
+function shuffleFY(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* ══════════════════════════════════════════════════════
+   PANTALLA 5 – RESULTADO
+══════════════════════════════════════════════════════ */
+function showResult(shuffled) {
+  renderSteps('steps-resultado', 2);
+  const el = document.getElementById('result-content');
+
+  if (selGame.type === 'one') {
+    // Un ganador (primer elemento tras barajar)
+    const winner = shuffled[0];
+    el.innerHTML = `
+      <div class="result-banner">
+        <div class="trophy">🏆</div>
+        <h2>¡${escHtml(selGame.name)}!</h2>
+        <p style="opacity:.85;margin-bottom:6px">El elegido es…</p>
+        <div class="winner-name">${winner.avatar} ${escHtml(winner.name)}</div>
+      </div>
+      ${shuffled.length > 1 ? `
+      <div style="background:#fff;border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:24px">
+        <p style="font-size:.8rem;color:var(--gray);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Resto de jugadores</p>
+        ${shuffled.slice(1).map(p => `
+          <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f3f4f6">
+            <span style="font-size:1.4rem">${p.avatar}</span>
+            <span style="font-weight:600;color:#374151">${escHtml(p.name)}</span>
+          </div>`).join('')}
+      </div>` : ''}
+    `;
+  } else {
+    // Dos equipos
+    const half  = Math.ceil(shuffled.length / 2);
+    const team1 = shuffled.slice(0, half);
+    const team2 = shuffled.slice(half);
+    el.innerHTML = `
+      <div class="result-banner team-result">
+        <div class="trophy">⚽</div>
+        <h2>¡${escHtml(selGame.name)}!</h2>
+        <p style="opacity:.85">Equipos listos para jugar</p>
+      </div>
+      <div class="teams-row">
+        <div class="team-card t1">
+          <h3>Equipo 🔵</h3>
+          <div class="team-members">
+            ${team1.map(p=>`
+              <div class="team-member">
+                <span style="font-size:1.3rem">${p.avatar}</span>
+                <span>${escHtml(p.name)}</span>
+              </div>`).join('')}
+          </div>
+        </div>
+        <div class="team-card t2">
+          <h3>Equipo 🔴</h3>
+          <div class="team-members">
+            ${team2.map(p=>`
+              <div class="team-member">
+                <span style="font-size:1.3rem">${p.avatar}</span>
+                <span>${escHtml(p.name)}</span>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+/* ── Seguridad: escapar HTML ── */
+function escHtml(str) {
+  return str.replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ── Iniciar app ── */
+go('inicio');
+</script>
+</body>
+</html>
